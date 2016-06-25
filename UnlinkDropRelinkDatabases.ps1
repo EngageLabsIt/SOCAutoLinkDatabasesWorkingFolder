@@ -187,8 +187,8 @@ $databases = (
         ($DB3Scope, $DB3Name, $DB3CreationScript, 3)
     )
 
-# RedGate - hard-coded to version 4.
-$socPath = $env:LOCALAPPDATA + "\Red Gate\SQL Source Control 4\"
+# RedGate - hard-coded to version 5, change it if you have another version.
+$socPath = $env:LOCALAPPDATA + "\Red Gate\SQL Source Control 5\"
 $workingFolderHooksPath = Join-Path $socPath "ReservedCommandLineHooks\WorkingFolder.xml"
 $xmlConfigurationsFilePath = Join-Path $socPath LinkedDatabases.xml
 
