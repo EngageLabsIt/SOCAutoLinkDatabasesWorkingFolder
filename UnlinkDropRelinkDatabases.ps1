@@ -278,7 +278,7 @@ $linkedDatabasesXmlNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabase
 #loop setting by database (list of databases on the top, hard coded)
 foreach ($database in $databases)
 {
-    $databaseScope = $database[0] #is the macro database area (ex. Accounts, Program, etc.)
+    $databaseScope = $database[0] #is the macro database area 
     $databaseName = $database[1] #name of the database
     $databaseOption = $database[3] #option related to the database in the "start menu"
 
