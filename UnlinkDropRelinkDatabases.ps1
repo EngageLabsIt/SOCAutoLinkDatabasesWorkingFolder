@@ -150,6 +150,7 @@ Write-Host "This script will create and link the development databases.." -Foreg
 Write-Host
 
 #region GLOBAL SETTINGS
+$CurrentFolder = Split-Path $MyInvocation.MyCommand.Definition -Parent
 
 #set this to true if you want a step by step execution
 $executeStepByStep = $false
