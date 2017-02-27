@@ -91,4 +91,4 @@ In order to consume also the comparison tools, you have to create a `Dependencie
 
 ## A special thanks to
 Many thanks to Red Gate for its great support. 
-I'd like to thanks [David Atkinson](https://twitter.com/dtabase), [Alex Yates](https://twitter.com/_alexyates_) and Mike Upton for the [repo](https://github.com/MatthewFlatt/SOCAutoLinkDatabases) I've used to start with this implementation.
+I'd like to thanks [David Atkinson](https://twitter.com/dtabase), [Alex Yates](https://twitter.com/_alexyates_) and Michael Upton for the [repo](https://github.com/MatthewFlatt/SOCAutoLinkDatabases) I've used to start with this implementation.
