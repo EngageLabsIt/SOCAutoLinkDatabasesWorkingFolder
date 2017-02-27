@@ -142,6 +142,50 @@ function GeneratingWorkingBaseAndTransient (
     }
 }
 
+
+function GetLatestDatabaseStructure(
+    [string]$sourceFolder = $(Throw 'sourceFolder is required'),
+    [string]$serverName = $(Throw 'serverName is required'),
+    [string]$databaseName = $(Throw 'databaseName is required'),
+    [string]$SqlCompareFolder = $(Throw 'SqlCompareFolder is required'),
+    [string]$LicenseSerialNumber = $(Throw 'LicenseSerialNumber is required')
+)
+{
+    Set-Location $SqlCompareFolder
+    $command = "./sqlcompare"
+    $arguments = " /activateSerial: $LicenseSerialNumber"
+    $arguments = "/scripts1:$sourceFolder"
+    $arguments += " /server2:$serverName"
+    $arguments += " /database2:$databaseName"
+    $arguments += " /options:IgnoreCollations,IgnoreFillFactor,IgnoreWhiteSpace,IncludeDependencies,IgnoreUserProperties,IgnoreWithElementOrder,IgnoreDatabaseAndServerName,DecryptPost2kEncryptedObjects"
+    $arguments += " /Synchronize"
+    $arguments += " /Force"
+    $arguments += " /Quiet"
+    Invoke-Expression "$command $arguments" | Out-Null
+
+}
+
+function GetLatestDatabaseData(
+    [string]$sourceFolder = $(Throw 'sourceFolder is required'),
+    [string]$serverName = $(Throw 'serverName is required'),
+    [string]$databaseName = $(Throw 'databaseName is required'),
+    [string]$SqlDataCompareFolder = $(Throw 'SqlDataCompareFolder is required'),
+    [string]$LicenseSerialNumber = $(Throw 'LicenseSerialNumber is required')
+)
+{
+    
+    Set-Location $SqlDataCompareFolder
+    $command = "./sqldatacompare"
+    $arguments = " /activateSerial: $LicenseSerialNumber"
+    $arguments = "/scripts1:$sourceFolder"
+    $arguments += " /server2:$serverName"
+    $arguments += " /database2:$databaseName"
+    $arguments += " /Synchronize"
+    $arguments += " /Force"
+    $arguments += " /Quiet"
+    Invoke-Expression "$command $arguments" | Out-Null
+}
+
 #endregion
 
 cls
@@ -190,6 +234,9 @@ $databases = (
 
 # RedGate - hard-coded to version 5, change it if you have another version.
 $socPath = $env:LOCALAPPDATA + "\Red Gate\SQL Source Control 5\"
+$SQLComparePath = Join-Path $CurrentFolder -ChildPath "Dependencies"
+$SQLDataComparePath = Join-Path $CurrentFolder -ChildPath "Dependencies"
+$SqlToolbeltLicenseSerialNumber = ""
 $workingFolderHooksPath = Join-Path $socPath "ReservedCommandLineHooks\WorkingFolder.xml"
 $xmlConfigurationsFilePath = Join-Path $socPath LinkedDatabases.xml
 
@@ -367,6 +414,23 @@ foreach ($database in $databases)
         # copy the content of the working folder into the transient and working bases
         GeneratingWorkingBaseAndTransient -sourceFolder $databaseWorkSpaceFolder -targetWorkingBase $randomWorkingBaseDirectoryName -targetTransient $randomTransientDirectoryName
     
+        #getting latest version of structures 
+        Write-Host " Getting latest versions of '$databaseName'... " -ForegroundColor DarkGray
+        Write-Host "   Comparing structures..." -ForegroundColor DarkGray -NoNewline
+        GetLatestDatabaseStructure -sourceFolder $databaseWorkSpaceFolder -serverName $serverName -databaseName $databaseName -SqlCompareFolder "$SQLComparePath" -LicenseSerialNumber $SqlToolbeltLicenseSerialNumber
+        Write-Host "Done!" -ForegroundColor Gray
+
+        if ($executeStepByStep)
+        {
+            write-host "getting latest versions of data" -ForegroundColor Yellow -BackgroundColor Red
+            read-host
+        }
+
+        #getting latest version of data
+        Write-Host "   Comparing data..." -ForegroundColor DarkGray -NoNewline
+        GetLatestDatabaseData -sourceFolder $databaseWorkSpaceFolder -serverName $serverName -databaseName $databaseName -SqlDataCompareFolder "$SQLDataComparePath" -LicenseSerialNumber $SqlToolbeltLicenseSerialNumber
+        Write-Host "Done!" -ForegroundColor Gray
+        
         Write-Host "New environment for database '$databaseName' ready!" -ForegroundColor White
         Write-Host
 
