@@ -35,7 +35,9 @@ The hard coded variables are:
 ## How it works
 The tool is based upon a Red Gate SQL Source Control installation. It changes automatically a set of configuration files, like `LinkedDatabases.xml` and `WorkingFolder.xml` and it's been tested only with the *working folder* source control option. This means that, likely, it'll work also with `git` and other source control based on folders, but it's not been tested with them. I'll wait for your contribution also for implementing the *direct link* to the source control.
 Once you execute the script, it checks for any active SSMS instance. If so, it asks you to close them. Don't worry, in the eng SSMS will be restarted, in order to _refresh_ the status of the linked databases.
-This is its pipeline:
+
+This is the pipeline:
+
 - it asks for a named instance (or the default one is used)
 - it shows a list of options (`0` for all the databases you've specified, another one for running the script just for one database)
 - based on the option you choose, it loops for each database, doing the following tasks:
