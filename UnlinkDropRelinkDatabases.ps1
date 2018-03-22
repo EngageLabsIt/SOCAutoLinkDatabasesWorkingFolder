@@ -6,11 +6,12 @@ function AddAndSaveXmlConfiguration (
     [string]$serverName = $(Throw 'serverName is required'), 
     [string]$databaseName = $(Throw 'databaseName is required'), 
     [string]$workSpacePath = $(Throw 'workSpacePath is required'), 
-    [string]$workingFolderHooksPath = $(Throw 'workingFolderHooksPath is required'), 
+    [string]$hooksPath = $(Throw 'hooksPath is required'), 
     [string]$workingBasePath = $(Throw 'workingBasePath is required'), 
     [string]$transientPath = $(Throw 'transientPath is required'),
     [xml]$xmlLinkedDatabases = $(Throw 'xmlLinkedDatabases is required'),
-    [string]$xmlConfigurationsFilePath = $(Throw 'xmlConfigurationsFilePath is required'))
+    [string]$xmlConfigurationsFilePath = $(Throw 'xmlConfigurationsFilePath is required'),
+    [string]$sourceControlName = $(Throw 'sourceControlName is required'))
 {
     #value node
     $xmlValueNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabaseList.AppendChild($xmlLinkedDatabases.CreateElement("value"))
@@ -28,17 +29,31 @@ function AddAndSaveXmlConfiguration (
             $xmlDatabaseNameNode = $xmlDatabaseNameNode.AppendChild($xmlLinkedDatabases.CreateTextNode($databaseName))
         #ISrcCLocation node
         $xmlISrcCLocationNode = $xmlValueNode.AppendChild($xmlLinkedDatabases.CreateElement("ISrcCLocation"))
-        $xmlISrcCLocationNode.SetAttribute("version", "2")
-        $xmlISrcCLocationNode.SetAttribute("type", "WorkingFolderGenericLocation")
-            #LocalRepositoryFolder node
-            $xmlLocalRepositoryFolderNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("LocalRepositoryFolder"))
-            $xmlLocalRepositoryFolderNode = $xmlLocalRepositoryFolderNode.AppendChild($xmlLinkedDatabases.CreateTextNode($workSpacePath+'\'))
+            if ($sourceControlName -eq "WorkingFolder")
+            {
+                $xmlISrcCLocationNode.SetAttribute("version", "2")
+                $xmlISrcCLocationNode.SetAttribute("type", "WorkingFolderGenericLocation")
+                #LocalRepositoryFolder node
+                $xmlLocalRepositoryFolderNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("LocalRepositoryFolder"))
+                $xmlLocalRepositoryFolderNode = $xmlLocalRepositoryFolderNode.AppendChild($xmlLinkedDatabases.CreateTextNode($workSpacePath+'\'))
+            } 
+            if ($sourceControlName -eq "git")
+            {
+                $xmlISrcCLocationNode.SetAttribute("version", "1")
+                $xmlISrcCLocationNode.SetAttribute("type", "GitLocalLocation")
+                #LocalRepositoryFolder node
+                $xmlLocalRepositoryFolderNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("LocalPath"))
+                $xmlLocalRepositoryFolderNode = $xmlLocalRepositoryFolderNode.AppendChild($xmlLinkedDatabases.CreateTextNode($workSpacePath+'\'))
+            }
             #HooksConfigFile node
-            $xmlHooksConfigFileNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("HooksConfigFile"))
-            $xmlHooksConfigFileNode = $xmlHooksConfigFileNode.AppendChild($xmlLinkedDatabases.CreateTextNode($workingFolderHooksPath))
-            #HooksFileInRepositoryFolder node
-            $xmlHooksFileInRepositoryFolderNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("HooksFileInRepositoryFolder"))
-            $xmlHooksFileInRepositoryFolderNode = $xmlHooksFileInRepositoryFolderNode.AppendChild($xmlLinkedDatabases.CreateTextNode("False"))
+            if ($sourceControlName -eq "WorkingFolder")
+            {
+                $xmlHooksConfigFileNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("HooksConfigFile"))
+                $xmlHooksConfigFileNode = $xmlHooksConfigFileNode.AppendChild($xmlLinkedDatabases.CreateTextNode($hooksPath))
+                #HooksFileInRepositoryFolder node
+                $xmlHooksFileInRepositoryFolderNode = $xmlISrcCLocationNode.AppendChild($xmlLinkedDatabases.CreateElement("HooksFileInRepositoryFolder"))
+                $xmlHooksFileInRepositoryFolderNode = $xmlHooksFileInRepositoryFolderNode.AppendChild($xmlLinkedDatabases.CreateTextNode("False"))
+            }
         #IWorkspaceId node
         $xmlIWorkspaceIdNode = $xmlValueNode.AppendChild($xmlLinkedDatabases.CreateElement("IWorkspaceId"))
         $xmlIWorkspaceIdNode.SetAttribute("version", "1")
@@ -159,6 +174,7 @@ function GetLatestDatabaseStructure(
     $arguments += " /database2:$databaseName"
     $arguments += " /options:IgnoreCollations,IgnoreFillFactor,IgnoreWhiteSpace,IncludeDependencies,IgnoreUserProperties,IgnoreWithElementOrder,IgnoreDatabaseAndServerName,DecryptPost2kEncryptedObjects"
     $arguments += " /Synchronize"
+    $arguments += " /include:Identical"
     $arguments += " /Force"
     $arguments += " /Quiet"
     Invoke-Expression "$command $arguments" | Out-Null
@@ -181,6 +197,7 @@ function GetLatestDatabaseData(
     $arguments += " /server2:$serverName"
     $arguments += " /database2:$databaseName"
     $arguments += " /Synchronize"
+    $arguments += " /include:Identical"
     $arguments += " /Force"
     $arguments += " /Quiet"
     Invoke-Expression "$command $arguments" | Out-Null
@@ -188,13 +205,16 @@ function GetLatestDatabaseData(
 
 #endregion
 
-cls
+Clear-Host
 
 Write-Host "This script will create and link the development databases.." -ForegroundColor Cyan
 Write-Host
 
 #region GLOBAL SETTINGS
 $CurrentFolder = Split-Path $MyInvocation.MyCommand.Definition -Parent
+
+#source control in use
+$sourceControlName = "git"
 
 #set this to true if you want a step by step execution
 $executeStepByStep = $false
@@ -232,12 +252,12 @@ $databases = (
         ($DB3Scope, $DB3Name, $DB3CreationScript, 3)
     )
 
-# RedGate - hard-coded to version 5, change it if you have another version.
-$socPath = $env:LOCALAPPDATA + "\Red Gate\SQL Source Control 5\"
+# RedGate - hard-coded to version 6, change it if you have another version.
+$socPath = $env:LOCALAPPDATA + "\Red Gate\SQL Source Control 6\"
 $SQLComparePath = Join-Path $CurrentFolder -ChildPath "Dependencies"
 $SQLDataComparePath = Join-Path $CurrentFolder -ChildPath "Dependencies"
 $SqlToolbeltLicenseSerialNumber = ""
-$workingFolderHooksPath = Join-Path $socPath "ReservedCommandLineHooks\WorkingFolder.xml"
+$hooksPath = Join-Path $socPath "ReservedCommandLineHooks\$sourceControlName.xml"
 $xmlConfigurationsFilePath = Join-Path $socPath LinkedDatabases.xml
 
 # script sql template for DROP DATABASE (needed for dropping the database before recreating it)
@@ -321,7 +341,7 @@ else
 }
 
 #configuration file (RedGate) xml node to manage
-$linkedDatabasesXmlNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabaseList.value
+#$linkedDatabasesXmlNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabaseList.value
 
 #loop setting by database (list of databases on the top, hard coded)
 foreach ($database in $databases)
@@ -334,14 +354,14 @@ foreach ($database in $databases)
     {
 
         $createDatabaseScript = Join-Path  $CurrentFolder $database[2] #path of the script to execute in order to create the database
-        $databaseFilesPath = Join-Path $databasesPath $databaseName #path of the target database
+        #$databaseFilesPath = Join-Path $databasesPath $databaseName #path of the target database
         $databaseWorkSpaceFolder = Join-Path $databaseBranchFolder $ProductName'.'$databaseScope #path of the workspace which contains the database
 
         Write-Host "Managing database: '$databaseName'" -ForegroundColor White
 
         #unlinking the databases from the source control working folder
         #delete info from the RedGate Source Control xml configuration file (if exists)
-        $dbNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabaseList.value | where {$_.DatabaseId.DatabaseName -eq $databaseName}
+        $dbNode = $xmlLinkedDatabases.LinkedDatabaseStore.LinkedDatabaseList.value | Where-Object {$_.DatabaseId.DatabaseName -eq $databaseName}
     
         if ($dbNode)
         {
@@ -403,7 +423,7 @@ foreach ($database in $databases)
 
         # create the info in the RedGate Source Control xml configuration file
         Write-Host " Creating nodes for the RedGate XML config file for '$databaseName'... " -ForegroundColor DarkGray -NoNewline
-        AddAndSaveXmlConfiguration -serverName $serverName -databaseName $databaseName -workspacePath $databaseWorkSpaceFolder -workingFolderHooksPath $workingFolderHooksPath -workingBasePath $randomWorkingBaseDirectoryName -transientPath $randomTransientDirectoryName -xmlLinkedDatabases $xmlLinkedDatabases -xmlConfigurationsFilePath $xmlConfigurationsFilePath
+        AddAndSaveXmlConfiguration -serverName $serverName -databaseName $databaseName -workspacePath $databaseWorkSpaceFolder -hooksPath $hooksPath -workingBasePath $randomWorkingBaseDirectoryName -transientPath $randomTransientDirectoryName -xmlLinkedDatabases $xmlLinkedDatabases -xmlConfigurationsFilePath $xmlConfigurationsFilePath -sourceControlName $sourceControlName
         Write-Host "Done!" -ForegroundColor Gray
     
         if ($executeStepByStep)
