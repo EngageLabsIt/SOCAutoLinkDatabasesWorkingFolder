@@ -130,11 +130,20 @@ function RemoveWorkingBaseAndTransientFolders (
 
 function CreateWorkingBaseAndTransientFolders (
     [string]$workingBase = $(Throw 'workingBase is required'),
-    [string]$transient = $(Throw 'transient is required')
+    [string]$transient = $(Throw 'transient is required'),
+    [string]$sourceControlName = $(Throw 'sourceControlName is required')
 )
 {
     New-Item $workingBase -type Directory | Out-Null
     New-Item $transient -type Directory | Out-Null
+
+    if ($sourceControlName -eq "git")
+    {
+        Set-Location $workingBase 
+        git init | Out-Null
+        Set-Location $transient
+        git init | Out-Null
+    }
 }
 
 function GeneratingWorkingBaseAndTransient (
@@ -412,7 +421,7 @@ foreach ($database in $databases)
         $randomTransientFileName = [System.IO.Path]::GetRandomFileName()
         $randomTransientDirectoryName = Join-Path (Join-Path $socPath Transients) $randomTransientFileName
         Write-Host " Creating the working base '$randomWorkingBaseFileName' and the transient '$randomTransientFileName'... " -ForegroundColor DarkGray -NoNewline
-        CreateWorkingBaseAndTransientFolders -workingBase $randomWorkingBaseDirectoryName -transient $randomTransientDirectoryName
+        CreateWorkingBaseAndTransientFolders -workingBase $randomWorkingBaseDirectoryName -transient $randomTransientDirectoryName -sourceControlName $sourceControlName
         Write-Host "Done!" -ForegroundColor Gray
 
         if ($executeStepByStep)
